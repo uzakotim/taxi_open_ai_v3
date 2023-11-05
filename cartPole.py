@@ -8,7 +8,7 @@ from keras.optimizers.legacy import Adam
 
 gamma = 0.95
 alpha = 0.5
-learning_rate_adam = 0.1
+learning_rate_adam = 0.001
 epsilon = 0.999
 epsilon_decay = 0.99
 
@@ -24,7 +24,7 @@ class DQN:
         self.observation_space = observation_space
 
         self.memory = []
-        self.batch_size = 8
+        self.batch_size = 2
 
         self.model = Sequential()
         self.model.add(Dense(24, input_shape=(
@@ -43,14 +43,14 @@ class DQN:
     def update(self, state, action, reward, next_state, done):
         if len(self.memory) < self.batch_size:
             return
-        batch = random.sample(self.memory, self.batch_size)
+        batch = random.choices(self.memory, k=self.batch_size)
         for state, action, reward, next_state, done in batch:
             q_update = reward
             if not done:
                 q_update = self.alpha * \
                     (reward + self.gamma *
-                     np.max(self.model.predict(next_state)[0]))
-            q_values = self.model.predict(state)
+                     np.max(self.model.predict(next_state, verbose=0)[0]))
+            q_values = self.model.predict(state, verbose=0)
             q_values[0][action] = q_update
             self.model.fit(state, q_values, verbose=0)
         self.epsilon *= epsilon_decay
@@ -66,7 +66,7 @@ def cartpole():
     dqn = DQN(observation_space, action_space)
     run = 0
     # TRAINING
-    while run < 1000:
+    while True:
         run += 1
         state = env.reset()
         state = state[0]
@@ -78,7 +78,7 @@ def cartpole():
             next_state, reward, done, info, next_value = env.step(action)
             reward = reward if not done else -reward
             next_state = np.reshape(next_state, [1, observation_space])
-            # dqn.memory_update(state, action, reward, next_state, done)
+            dqn.memory_update(state, action, reward, next_state, done)
             dqn.update(state, action, reward, next_state, done)
             if done:
                 print("Epoch: " + str(run) + " Score: " + str(step))
